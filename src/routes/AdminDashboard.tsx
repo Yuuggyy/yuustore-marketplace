@@ -335,7 +335,7 @@ export default function AdminDashboard() {
             </div>
             <div className="bg-surface border border-surface-light rounded-xl p-6">
               <h3 className="font-display font-semibold text-heading mb-2">Informations</h3>
-              <p className="text-xs text-muted">WhatsApp: +243 901 950 256</p>
+              <p className="text-xs text-muted">WhatsApp: +243 977 555 768</p>
               <p className="text-xs text-muted">Email: yuustore169@gmail.com</p>
               <p className="text-xs text-muted">Localisation: Kinshasa, RDC</p>
             </div>

@@ -37,7 +37,7 @@ export default function Footer() {
                 <MapPin className="h-4 w-4 shrink-0" /> Kinshasa, RDC
               </li>
               <li className="flex items-center gap-2 text-sm text-muted">
-                <Phone className="h-4 w-4 shrink-0" /> +243 901 950 256
+                <Phone className="h-4 w-4 shrink-0" /> +243 977 555 768
               </li>
               <li className="flex items-center gap-2 text-sm text-muted">
                 <Mail className="h-4 w-4 shrink-0" /> yuustore169@gmail.com
