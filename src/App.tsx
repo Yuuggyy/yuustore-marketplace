@@ -4,7 +4,6 @@ import { CartProvider } from "./lib/cart";
 import { Toaster } from "sonner";
 import { Loader2 } from "lucide-react";
 
-// Pages
 import HomePage from "./routes/HomePage";
 import CataloguePage from "./routes/CataloguePage";
 import ProductDetailPage from "./routes/ProductDetailPage";
@@ -25,7 +24,7 @@ export default function App() {
   return (
     <AuthProvider>
       <CartProvider>
-        <BrowserRouter>
+        <BrowserRouter basename="/yuustore-marketplace">
           <Toaster
             position="top-center"
             toastOptions={{
