@@ -71,7 +71,7 @@ export default function AdminDashboard() {
   };
 
   // Category management
-  const [newCat, setNewCat] = useState({ name: "", icon: "📦" });
+  const [newCat, setNewCat] = useState({ name: "", icon: "" });
   const addCategory = async () => {
     if (!newCat.name.trim()) return;
     const { error } = await supabase.from("categories").insert({
@@ -81,7 +81,7 @@ export default function AdminDashboard() {
     });
     if (error) { toast.error(error.message); return; }
     toast.success("Catégorie ajoutée");
-    setNewCat({ name: "", icon: "📦" });
+    setNewCat({ name: "", icon: "" });
     fetchAll();
   };
 

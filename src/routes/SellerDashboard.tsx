@@ -298,7 +298,7 @@ export default function SellerDashboard() {
                   sellerProfile.status === "active" ? "text-green-500" :
                   sellerProfile.status === "pending" ? "text-yellow-500" : "text-red-500"
                 }`}>
-                  {sellerProfile.status === "active" ? "✓ Actif" : sellerProfile.status === "pending" ? "⏳ En attente" : "✗ Suspendu"}
+                  {sellerProfile.status === "active" ? " Actif" : sellerProfile.status === "pending" ? " En attente" : " Suspendu"}
                 </p>
               </div>
             </div>
@@ -372,7 +372,7 @@ export default function SellerDashboard() {
                   {categories.map((c) => (
                     <option key={c.id} value={c.name}>{c.icon} {c.name}</option>
                   ))}
-                  <option value="Autre">📦 Autre</option>
+                  <option value="Autre"> Autre</option>
                 </select>
               </div>
 
