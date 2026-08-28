@@ -10,6 +10,16 @@
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Raleway:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <link rel="icon" type="image/png" href="/yuustore-marketplace/favicon.png" />
   <link rel="apple-touch-icon" href="/yuustore-marketplace/logo.png" />
+  <script>
+    // GitHub Pages SPA redirect: convert ?/path back to /path
+    (function() {
+      var l = window.location;
+      if (l.search && l.search.indexOf('?/') === 0) {
+        var redirect = l.protocol + '//' + l.host + l.pathname + l.search.replace(/^\?/, '').replace(/~and~/g, '&') + l.hash;
+        history.replaceState(null, null, redirect);
+      }
+    })();
+  </script>
 </head>
 <body>
   <div id="root"></div>
