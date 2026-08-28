@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 
 // YuuStore Supabase project — replace with actual credentials when ready
-const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || "https://placeholder.supabase.co";
-const SUPABASE_ANON_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || "placeholder-key";
+const SUPABASE_URL = "https://cifujdeelritrnnyzupw.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNpZnVqZGVlbHJpdHJubnl6dXB3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc5NDA2MTYsImV4cCI6MjEwMzUxNjYxNn0.8hK_qhIcE__0YlWBZJtZbPwfe0s4vUOWqhj1tzNYv14";
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
