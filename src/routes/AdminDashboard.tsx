@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Loader2, Package, Store, Inbox, Settings, Trash2, Check, X, MessageCircle, Upload, Image as ImageIcon } from "lucide-react";
+import { Loader2, Package, Store, Inbox, Settings, Trash2, Check, X, MessageCircle, Upload, Image as ImageIcon, Plus } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { supabase, type Product, type Seller, type Order, type Category } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -13,6 +13,18 @@ export default function AdminDashboard() {
   const [sellers, setSellers] = useState<Seller[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Admin product form
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [adminProduct, setAdminProduct] = useState({
+    name: "",
+    description: "",
+    price: "",
+    category: "",
+    image_url: "",
+    stock: "",
+  });
+  const [addingProduct, setAddingProduct] = useState(false);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -52,6 +64,73 @@ export default function AdminDashboard() {
     if (error) { toast.error(error.message); return; }
     toast.success("Produit supprimé");
     fetchAll();
+  };
+
+  // Admin add product (admin creates as a special seller or without seller)
+  const addAdminProduct = async () => {
+    if (!adminProduct.name.trim() || !adminProduct.price.trim()) {
+      toast.error("Nom et prix requis");
+      return;
+    }
+    setAddingProduct(true);
+    try {
+      // Check if an admin seller exists, if not create one
+      let adminSellerId: string | null = null;
+      const { data: existingSeller } = await supabase
+        .from("sellers")
+        .select("id")
+        .eq("email", "yuustore169@gmail.com")
+        .maybeSingle();
+
+      if (existingSeller) {
+        adminSellerId = existingSeller.id;
+      } else {
+        const { data: newSeller, error: sellerError } = await supabase.from("sellers").insert({
+          name: "YuuStore Officiel",
+          email: "yuustore169@gmail.com",
+          status: "active",
+        }).select().single();
+        if (sellerError) throw sellerError;
+        adminSellerId = newSeller.id;
+      }
+
+      const imageUrls = adminProduct.image_url ? [adminProduct.image_url] : [];
+
+      const { error } = await supabase.from("products").insert({
+        seller_id: adminSellerId,
+        name: adminProduct.name.trim(),
+        description: adminProduct.description || null,
+        price: parseFloat(adminProduct.price),
+        category: adminProduct.category || null,
+        image_urls: imageUrls,
+        stock: adminProduct.stock ? parseInt(adminProduct.stock) : null,
+        status: "approved", // Admin products are auto-approved
+      });
+
+      if (error) throw error;
+      toast.success("Produit ajouté par l'admin");
+      setAdminProduct({ name: "", description: "", price: "", category: "", image_url: "", stock: "" });
+      setShowAddProduct(false);
+      fetchAll();
+    } catch (e: any) {
+      toast.error(e.message || "Erreur lors de l'ajout");
+    }
+    setAddingProduct(false);
+  };
+
+  // Upload product image
+  const uploadProductImage = async (file: File) => {
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `admin/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("product-images").upload(path, file);
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
+      setAdminProduct({ ...adminProduct, image_url: urlData.publicUrl });
+      toast.success("Image ajoutée");
+    } catch (e: any) {
+      toast.error(e.message || "Erreur upload");
+    }
   };
 
   // Seller management
@@ -155,7 +234,13 @@ export default function AdminDashboard() {
         {/* Orders tab */}
         {tab === "orders" && (
           <div className="space-y-4">
-            {orders.length === 0 && <p className="text-muted text-sm">Aucune commande.</p>}
+            {orders.length === 0 && (
+              <div className="bg-surface border border-surface-light rounded-xl p-8 text-center">
+                <Inbox className="h-10 w-10 text-muted mx-auto mb-3 opacity-50" />
+                <p className="text-muted text-sm">Aucune commande pour le moment.</p>
+                <p className="text-muted text-xs mt-1">Les commandes des clients apparaîtront ici automatiquement.</p>
+              </div>
+            )}
             {orders.map((o) => (
               <div key={o.id} className="bg-surface border border-surface-light rounded-xl p-4">
                 <div className="flex items-start justify-between flex-wrap gap-2">
@@ -188,7 +273,7 @@ export default function AdminDashboard() {
                   {o.items.map((item, i) => (
                     <div key={i} className="flex justify-between text-sm border-b border-surface-light pb-1">
                       <div>
-                        <span className="text-heading">{item.quantity}× {item.product_name}</span>
+                        <span className="text-heading">{item.quantity}x {item.product_name}</span>
                         <span className="text-muted text-xs ml-2">par {item.seller_name}</span>
                       </div>
                       <span className="text-accent font-semibold">{(item.price * item.quantity).toLocaleString()} FC</span>
@@ -215,43 +300,144 @@ export default function AdminDashboard() {
 
         {/* Products tab */}
         {tab === "products" && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {products.map((p) => (
-              <div key={p.id} className="bg-surface border border-surface-light rounded-xl overflow-hidden">
-                <div className="aspect-square bg-surface-light overflow-hidden">
-                  {p.image_urls?.[0] ? (
-                    <img src={p.image_urls[0]} alt={p.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-muted text-xs">Pas d'image</div>
-                  )}
-                </div>
-                <div className="p-3">
-                  <p className="text-sm font-medium text-heading line-clamp-1">{p.name}</p>
-                  <p className="text-xs text-muted">par {p.seller_name || "—"}</p>
-                  <p className="font-bold text-accent text-sm mt-1">{p.price.toLocaleString()} FC</p>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full border inline-block mt-1 ${
-                    p.status === "approved" ? "border-green-500/40 text-green-500" :
-                    p.status === "pending" ? "border-yellow-500/40 text-yellow-500" :
-                    "border-red-500/40 text-red-500"
-                  }`}>{p.status}</span>
-                  <div className="flex gap-1 mt-2">
-                    {p.status !== "approved" && (
-                      <button onClick={() => approveProduct(p.id)} className="flex-1 h-8 rounded-lg bg-green-500/10 border border-green-500/30 text-green-500 text-xs flex items-center justify-center gap-1 hover:bg-green-500/20">
-                        <Check className="h-3 w-3" /> Valider
-                      </button>
-                    )}
-                    {p.status !== "rejected" && (
-                      <button onClick={() => rejectProduct(p.id)} className="flex-1 h-8 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 text-xs flex items-center justify-center gap-1 hover:bg-yellow-500/20">
-                        <X className="h-3 w-3" /> Rejeter
-                      </button>
-                    )}
-                    <button onClick={() => deleteProduct(p.id)} className="h-8 px-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-500 hover:bg-red-500/20">
-                      <Trash2 className="h-3 w-3" />
+          <div>
+            {/* Add product button + form */}
+            <div className="mb-4">
+              {!showAddProduct ? (
+                <button
+                  onClick={() => setShowAddProduct(true)}
+                  className="inline-flex items-center gap-2 px-4 h-10 rounded-lg bg-accent text-background font-semibold text-sm hover:bg-accent/90 transition-colors"
+                >
+                  <Plus className="h-4 w-4" /> Ajouter un produit
+                </button>
+              ) : (
+                <div className="bg-surface border border-surface-light rounded-xl p-6 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-display font-semibold text-heading">Nouveau produit (Admin)</h3>
+                    <button onClick={() => setShowAddProduct(false)} className="text-muted hover:text-heading p-1">
+                      <X className="h-5 w-5" />
                     </button>
                   </div>
+                  <input
+                    value={adminProduct.name}
+                    onChange={(e) => setAdminProduct({ ...adminProduct, name: e.target.value })}
+                    placeholder="Nom du produit *"
+                    className="w-full bg-background border border-surface-light rounded-lg px-4 h-10 text-sm focus:border-accent outline-none"
+                  />
+                  <textarea
+                    value={adminProduct.description}
+                    onChange={(e) => setAdminProduct({ ...adminProduct, description: e.target.value })}
+                    placeholder="Description (optionnel)"
+                    className="w-full bg-background border border-surface-light rounded-lg px-4 py-2 text-sm focus:border-accent outline-none min-h-[60px]"
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <input
+                      value={adminProduct.price}
+                      onChange={(e) => setAdminProduct({ ...adminProduct, price: e.target.value })}
+                      placeholder="Prix (FC) *"
+                      type="number"
+                      className="bg-background border border-surface-light rounded-lg px-4 h-10 text-sm focus:border-accent outline-none"
+                    />
+                    <input
+                      value={adminProduct.stock}
+                      onChange={(e) => setAdminProduct({ ...adminProduct, stock: e.target.value })}
+                      placeholder="Stock (optionnel)"
+                      type="number"
+                      className="bg-background border border-surface-light rounded-lg px-4 h-10 text-sm focus:border-accent outline-none"
+                    />
+                  </div>
+                  <select
+                    value={adminProduct.category}
+                    onChange={(e) => setAdminProduct({ ...adminProduct, category: e.target.value })}
+                    className="w-full bg-background border border-surface-light rounded-lg px-4 h-10 text-sm focus:border-accent outline-none"
+                  >
+                    <option value="">Catégorie (optionnel)</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                  {/* Image upload */}
+                  <div>
+                    <label className="block text-xs text-muted mb-1">Image du produit</label>
+                    {adminProduct.image_url ? (
+                      <div className="relative">
+                        <img src={adminProduct.image_url} alt="preview" className="w-24 h-24 object-cover rounded-lg border border-surface-light" />
+                        <button
+                          onClick={() => setAdminProduct({ ...adminProduct, image_url: "" })}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="flex items-center justify-center gap-2 h-10 rounded-lg border border-dashed border-surface-light text-muted text-sm cursor-pointer hover:border-accent transition-colors">
+                        <Upload className="h-4 w-4" /> Téléverser une image
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) uploadProductImage(file);
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
+                  <button
+                    onClick={addAdminProduct}
+                    disabled={addingProduct}
+                    className="inline-flex items-center gap-2 px-4 h-10 rounded-lg bg-accent text-background font-semibold text-sm hover:bg-accent/90 transition-colors disabled:opacity-50"
+                  >
+                    {addingProduct ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                    {addingProduct ? "Ajout..." : "Publier le produit"}
+                  </button>
                 </div>
-              </div>
-            ))}
+              )}
+            </div>
+
+            {/* Products grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {products.map((p) => (
+                <div key={p.id} className="bg-surface border border-surface-light rounded-xl overflow-hidden">
+                  <div className="aspect-square bg-surface-light overflow-hidden">
+                    {p.image_urls?.[0] ? (
+                      <img src={p.image_urls[0]} alt={p.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-muted text-xs">Pas d'image</div>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <p className="text-sm font-medium text-heading line-clamp-1">{p.name}</p>
+                    <p className="text-xs text-muted">par {p.seller_name || "YuuStore"}</p>
+                    <p className="font-bold text-accent text-sm mt-1">{p.price.toLocaleString()} FC</p>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full border inline-block mt-1 ${
+                      p.status === "approved" ? "border-green-500/40 text-green-500" :
+                      p.status === "pending" ? "border-yellow-500/40 text-yellow-500" :
+                      "border-red-500/40 text-red-500"
+                    }`}>{p.status}</span>
+                    <div className="flex gap-1 mt-2">
+                      {p.status !== "approved" && (
+                        <button onClick={() => approveProduct(p.id)} className="flex-1 h-8 rounded-lg bg-green-500/10 border border-green-500/30 text-green-500 text-xs flex items-center justify-center gap-1 hover:bg-green-500/20">
+                          <Check className="h-3 w-3" /> Valider
+                        </button>
+                      )}
+                      {p.status !== "rejected" && (
+                        <button onClick={() => rejectProduct(p.id)} className="flex-1 h-8 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 text-xs flex items-center justify-center gap-1 hover:bg-yellow-500/20">
+                          <X className="h-3 w-3" /> Rejeter
+                        </button>
+                      )}
+                      <button onClick={() => deleteProduct(p.id)} className="h-8 px-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-500 hover:bg-red-500/20">
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {products.length === 0 && (
+                <p className="text-muted text-sm col-span-full text-center py-8">Aucun produit. Cliquez sur "Ajouter un produit" pour commencer.</p>
+              )}
+            </div>
           </div>
         )}
 
@@ -293,12 +479,6 @@ export default function AdminDashboard() {
           <div className="max-w-lg space-y-4">
             <div className="flex gap-2">
               <input
-                value={newCat.icon}
-                onChange={(e) => setNewCat({ ...newCat, icon: e.target.value })}
-                className="w-16 bg-surface border border-surface-light rounded-lg px-3 h-10 text-center text-lg"
-                maxLength={2}
-              />
-              <input
                 value={newCat.name}
                 onChange={(e) => setNewCat({ ...newCat, name: e.target.value })}
                 placeholder="Nom de catégorie"
@@ -311,7 +491,7 @@ export default function AdminDashboard() {
             <div className="space-y-2">
               {categories.map((c) => (
                 <div key={c.id} className="flex items-center justify-between bg-surface border border-surface-light rounded-lg px-4 py-3">
-                  <span className="text-heading"><span className="text-lg mr-2">{c.icon}</span>{c.name}</span>
+                  <span className="text-heading">{c.name}</span>
                   <button onClick={() => deleteCategory(c.id)} className="text-red-500 hover:bg-red-500/10 p-2 rounded">
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -364,36 +544,49 @@ function SiteImageUploader({ label, settingKey }: { label: string; settingKey: s
       const path = `site/${settingKey}-${Date.now()}.${ext}`;
       const { error } = await supabase.storage.from("product-images").upload(path, file);
       if (error) throw error;
-      const { data } = supabase.storage.from("product-images").getPublicUrl(path);
-      const url = data.publicUrl;
+      const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
+      const url = urlData.publicUrl;
+      const { error: dbError } = await supabase.from("site_settings").upsert({
+        key: settingKey,
+        value: url,
+      }, { onConflict: "key" });
+      if (dbError) throw dbError;
       setCurrentUrl(url);
-      await supabase.from("site_settings").upsert({ key: settingKey, value: url }, { onConflict: "key" });
       toast.success("Image mise à jour");
     } catch (e: any) {
-      toast.error(e?.message || "Erreur");
-    } finally {
-      setUploading(false);
+      toast.error(e.message || "Erreur upload");
     }
+    setUploading(false);
   };
 
   return (
-    <div className="mb-4 last:mb-0">
-      <label className="text-xs text-muted mb-2 block">{label}</label>
-      <div className="flex items-center gap-3">
-        <div className="w-20 h-20 rounded-lg bg-surface-light border border-surface-light overflow-hidden flex items-center justify-center">
-          {currentUrl ? <img src={currentUrl} alt="" className="w-full h-full object-cover" /> : <ImageIcon className="h-6 w-6 text-muted" />}
+    <div className="mb-4">
+      <label className="block text-xs text-muted mb-1">{label}</label>
+      {currentUrl ? (
+        <div className="relative inline-block">
+          <img src={currentUrl} alt={label} className="w-32 h-32 object-cover rounded-lg border border-surface-light" />
+          <label className="mt-2 flex items-center justify-center gap-2 h-8 rounded-lg border border-surface-light text-muted text-xs cursor-pointer hover:border-accent transition-colors">
+            <Upload className="h-3 w-3" /> Remplacer
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }}
+            />
+          </label>
         </div>
-        <label className="px-4 h-10 rounded-lg bg-surface-light border border-surface-light flex items-center gap-2 text-sm cursor-pointer hover:border-accent transition-colors">
+      ) : (
+        <label className="flex items-center justify-center gap-2 h-10 rounded-lg border border-dashed border-surface-light text-muted text-sm cursor-pointer hover:border-accent transition-colors">
           {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          {uploading ? "Upload..." : "Changer"}
+          {uploading ? "Upload..." : "Téléverser une image"}
           <input
             type="file"
             accept="image/*"
             className="hidden"
-            onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0])}
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }}
           />
         </label>
-      </div>
+      )}
     </div>
   );
 }
