@@ -11,12 +11,12 @@
   <link rel="icon" type="image/png" href="/yuustore-marketplace/favicon.png" />
   <link rel="apple-touch-icon" href="/yuustore-marketplace/logo.png" />
   <script>
-    // GitHub Pages SPA redirect: convert ?/path back to /path
     (function() {
       var l = window.location;
       if (l.search && l.search.indexOf('?/') === 0) {
-        var redirect = l.protocol + '//' + l.host + l.pathname + l.search.replace(/^\?/, '').replace(/~and~/g, '&') + l.hash;
-        history.replaceState(null, null, redirect);
+        var path = l.search.replace(/^\?/, '').replace(/~and~/g, '&');
+        var base = l.pathname.replace(/\/$/, '');
+        history.replaceState(null, null, l.protocol + '//' + l.host + base + path + l.hash);
       }
     })();
   </script>
